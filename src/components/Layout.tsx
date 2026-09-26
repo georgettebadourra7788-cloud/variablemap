@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { paths } from '../router';
+import { FEEDBACK_URL } from '../config/site';
 import { Logo } from './Logo';
 import { useProjects } from '../state/ProjectsContext';
 
@@ -33,7 +34,14 @@ export function SiteFooter() {
         <p>
           <span className="font-semibold text-slate-700">VariableMap</span> — Build a clearer research codebook.
         </p>
-        <p>Your research stays on your device. Projects are stored locally in this browser.</p>
+        <p className="flex flex-col gap-1 sm:items-end">
+          <span>Your research stays on your device. Projects are stored locally in this browser.</span>
+          {FEEDBACK_URL && (
+            <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-navy-700 hover:underline">
+              Send feedback<span className="sr-only"> (opens in a new tab)</span> ↗
+            </a>
+          )}
+        </p>
       </div>
     </footer>
   );
