@@ -1,6 +1,6 @@
 import { Button } from './ui';
 import { useToast } from './Toast';
-import { copyText, downloadFile, fileSafe, toCSV, toTSV } from '../lib/export';
+import { copyTable, downloadFile, fileSafe, toCSV } from '../lib/export';
 
 export function ExportBar({
   label,
@@ -22,7 +22,7 @@ export function ExportBar({
         variant="secondary"
         disabled={disabled}
         onClick={async () => {
-          const ok = await copyText(toTSV(columns, rows));
+          const ok = await copyTable(columns, rows);
           toast(ok ? `${label} copied — paste into Word, Google Docs, or a spreadsheet.` : 'Copy failed. Try Download CSV instead.', ok ? 'success' : 'error');
         }}
       >

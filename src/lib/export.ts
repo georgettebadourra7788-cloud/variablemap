@@ -35,6 +35,60 @@ export function downloadFile(filename: string, content: string, mime: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** A bordered HTML table; Word and Google Docs paste this as a real table. */
+export function toHTMLTable(columns: readonly string[], rows: Record<string, string>[]): string {
+  const cell = 'border:1px solid #94a3b8;padding:4px 6px;vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:9pt;';
+  const head = columns.map((c) => `<th style="${cell}background:#f1f5f9;text-align:left;">${escapeHtml(c)}</th>`).join('');
+  const body = rows
+    .map((r) => `<tr>${columns.map((c) => `<td style="${cell}">${escapeHtml(r[c] ?? '')}</td>`).join('')}</tr>`)
+    .join('');
+  return `<table style="border-collapse:collapse;"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+/**
+ * Copies a table as both HTML (Word, Google Docs) and tab-separated text (Excel, Sheets).
+ * Falls back to selecting a rendered table, then to plain text.
+ */
+export async function copyTable(columns: readonly string[], rows: Record<string, string>[]): Promise<boolean> {
+  const html = toHTMLTable(columns, rows);
+  const text = toTSV(columns, rows);
+  try {
+    if (navigator.clipboard && 'write' in navigator.clipboard && typeof ClipboardItem !== 'undefined' && window.isSecureContext) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+        }),
+      ]);
+      return true;
+    }
+  } catch {
+    /* try the selection-based fallback */
+  }
+  try {
+    const host = document.createElement('div');
+    host.style.position = 'fixed';
+    host.style.left = '-9999px';
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    const range = document.createRange();
+    range.selectNodeContents(host);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    const ok = document.execCommand('copy');
+    sel?.removeAllRanges();
+    host.remove();
+    if (ok) return true;
+  } catch {
+    /* fall through to plain text */
+  }
+  return copyText(text);
+}
+
 export async function copyText(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard && window.isSecureContext) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildExampleProject } from '../../data/exampleProject';
 import { buildCodebook, buildDataDictionary, CODEBOOK_COLUMNS, toDatasetName } from '../codebook';
-import { toCSV, toTSV } from '../export';
+import { toCSV, toHTMLTable, toTSV } from '../export';
 import { reviewProject, reviewVariable } from '../review';
 import { createItem, createVariable, duplicateProject, countItems } from '../factory';
 import { normalizeProject } from '../storage';
@@ -127,5 +127,16 @@ describe('review improvements', () => {
     expect(sa?.status).toBe('review');
     expect(sa?.message).toContain('also used in Platforms Used');
     expect(sb?.message).toContain('also used in Sleep Quality');
+  });
+});
+
+describe('HTML table copy', () => {
+  it('builds an escaped table with header and rows', () => {
+    const html = toHTMLTable(['A', 'B'], [{ A: '<script>x</script>', B: 'a & b' }]);
+    expect(html).toMatch(/^<table/);
+    expect(html).toContain('<th');
+    expect(html).toContain('&lt;script&gt;x&lt;/script&gt;');
+    expect(html).toContain('a &amp; b');
+    expect(html).not.toContain('<script>');
   });
 });

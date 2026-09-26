@@ -79,7 +79,7 @@ export function CodebookPage({ project }: { project: Project }) {
             ))}
           </ul>
           <p className="no-print mt-4 text-xs text-slate-500">
-            Tip: “Copy Codebook” copies a tab-separated table that pastes cleanly into Word, Google Docs, Excel, or Google Sheets.
+            Tip: “Copy Codebook” copies a table you can paste into Word, Google Docs, Excel, or Google Sheets. In Word, switch the page to landscape (Layout → Orientation) so all 12 columns fit.
           </p>
         </>
       )}
