@@ -17,7 +17,6 @@ export function FreePlanCard({ showCta = true }: { showCta?: boolean }) {
       </div>
       <p className="mt-3">
         <span className="font-serif text-4xl font-semibold text-navy-900">{FREE_PLAN.price}</span>
-        <span className="ml-2 text-sm text-slate-500">{FREE_PLAN.tagline}</span>
       </p>
       <ul className="mt-5 space-y-2 text-sm text-slate-700">
         {FREE_PLAN.features.map((f) => (
