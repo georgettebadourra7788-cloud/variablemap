@@ -67,9 +67,13 @@ describe('codebook & dictionary', () => {
 
 describe('export', () => {
   it('escapes CSV and neutralises formulas but keeps negative codes', () => {
-    const csv = toCSV(['a', 'b'], [{ a: 'x, "y"', b: '=SUM(A1)' }, { a: '-99', b: '-cmd' }]);
-    expect(csv.split('\r\n')[1]).toBe(`"x, ""y""",'=SUM(A1)`);
-    expect(csv.split('\r\n')[2]).toBe(`-99,'-cmd`);
+    const csv = toCSV(['a', 'b', 'c'], [
+      { a: 'x, "y"', b: '=SUM(A1)', c: '@x' },
+      { a: '-99', b: '-99 = No response', c: '+1.5' },
+    ]);
+    expect(csv.split('\r\n')[1]).toBe(`"x, ""y""",\t=SUM(A1),\t@x`);
+    // Plain numbers stay numeric; text that starts like a formula stays text (was #NAME? in Excel).
+    expect(csv.split('\r\n')[2]).toBe(`-99,\t-99 = No response,+1.5`);
   });
   it('TSV strips tabs/newlines inside cells', () => {
     expect(toTSV(['a'], [{ a: 'x\ty\nz' }])).toBe('a\nx y z');

@@ -1,9 +1,12 @@
 /**
- * Neutralises spreadsheet formula injection while keeping values such as
- * missing-data codes ("-99") intact.
+ * Stops spreadsheets from treating text as a formula. Excel evaluates any cell
+ * starting with = + - @, so "-99 = No response" became #NAME?. Plain numbers
+ * ("-99", "+1.5") stay numeric; other such text gets an invisible leading tab
+ * so it opens as text.
  */
 function safeCell(value: string): string {
-  if (/^[=+@\t\r]/.test(value) || /^-[^0-9.]/.test(value)) return `'${value}`;
+  if (/^[+-]?\d+(\.\d+)?$/.test(value)) return value;
+  if (/^[=+\-@\r]/.test(value)) return `\t${value}`;
   return value;
 }
 
