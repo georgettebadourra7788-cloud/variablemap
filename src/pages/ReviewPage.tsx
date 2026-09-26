@@ -1,13 +1,21 @@
+import { useState } from 'react';
 import type { Project } from '../types';
 import { paths } from '../router';
 import { reviewProject, type ReviewCheck } from '../lib/review';
 import { Card, EmptyState, LinkButton, SectionHeading } from '../components/ui';
 import { STATUS_META, StatusPill } from '../components/StatusIcon';
 
-function CheckList({ checks }: { checks: ReviewCheck[] }) {
+function CheckList({ checks, issuesOnly }: { checks: ReviewCheck[]; issuesOnly: boolean }) {
+  const shown = issuesOnly ? checks.filter((c) => c.status !== 'complete') : checks;
+  if (shown.length === 0)
+    return (
+      <p className="mt-3 flex items-center gap-2 text-sm text-emerald-800">
+        <StatusPill status="complete" showLabel={false} /> All {checks.length} checks complete.
+      </p>
+    );
   return (
     <ul className="divide-y divide-slate-100">
-      {checks.map((c) => (
+      {shown.map((c) => (
         <li key={c.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:gap-4">
           <div className="sm:w-52 sm:shrink-0">
             <StatusPill status={c.status} />
@@ -25,6 +33,8 @@ function CheckList({ checks }: { checks: ReviewCheck[] }) {
 
 export function ReviewPage({ project }: { project: Project }) {
   const review = reviewProject(project);
+  const issueCount = review.counts.review + review.counts.missing;
+  const [issuesOnly, setIssuesOnly] = useState(issueCount > 0);
 
   return (
     <div>
@@ -57,6 +67,30 @@ export function ReviewPage({ project }: { project: Project }) {
         ))}
       </div>
 
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-slate-600">
+          {issueCount === 0
+            ? 'No issues found.'
+            : `${issueCount} item${issueCount === 1 ? '' : 's'} to look at${issuesOnly ? ' — completed checks are hidden.' : '.'}`}
+        </p>
+        <div role="group" aria-label="Which checks to show" className="inline-flex self-start rounded-md border border-slate-300 bg-white p-0.5 text-sm">
+          {[
+            { value: true, label: 'Issues only' },
+            { value: false, label: 'All checks' },
+          ].map((o) => (
+            <button
+              key={o.label}
+              type="button"
+              aria-pressed={issuesOnly === o.value}
+              onClick={() => setIssuesOnly(o.value)}
+              className={`rounded px-3 py-1.5 font-medium ${issuesOnly === o.value ? 'bg-navy-800 text-white' : 'text-slate-600 hover:bg-navy-50'}`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Card className="mb-6 p-5">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-serif text-lg font-semibold">Project</h3>
@@ -64,7 +98,7 @@ export function ReviewPage({ project }: { project: Project }) {
             Edit details
           </LinkButton>
         </div>
-        <CheckList checks={review.project} />
+        <CheckList checks={review.project} issuesOnly={issuesOnly} />
       </Card>
 
       {review.variables.length === 0 ? (
@@ -84,7 +118,7 @@ export function ReviewPage({ project }: { project: Project }) {
                   Edit variable
                 </LinkButton>
               </div>
-              <CheckList checks={vr.checks} />
+              <CheckList checks={vr.checks} issuesOnly={issuesOnly} />
             </Card>
           ))}
         </div>

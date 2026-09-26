@@ -108,3 +108,24 @@ describe('codebook text joining', () => {
     expect(def).toMatch(/technologies\. Operational:/);
   });
 });
+
+describe('review improvements', () => {
+  it('flags an unspecified data type', () => {
+    const r = reviewVariable(createVariable({ name: 'X' }));
+    expect(r.checks.find((c) => c.id === 'datatype')?.status).toBe('missing');
+    expect(reviewVariable(createVariable({ dataType: 'numeric' })).checks.find((c) => c.id === 'datatype')?.status).toBe('complete');
+  });
+
+  it('names duplicate codes and flags them on every variable that uses them', () => {
+    const a = createVariable({ name: 'Sleep Quality', items: [createItem({ code: 'SQ1', responseScale: 's', reverseCoded: 'no' })] });
+    const b = createVariable({ name: 'Platforms Used', items: [createItem({ code: 'sq1', responseScale: 's', reverseCoded: 'no' })] });
+    const p = { ...buildExampleProject(), variables: [a, b] };
+    const rev = reviewProject(p);
+    expect(rev.project.find((c) => c.id === 'codes')?.message).toContain('SQ1 (Sleep Quality, Platforms Used)');
+    const sa = rev.variables[0].checks.find((c) => c.id === 'structure');
+    const sb = rev.variables[1].checks.find((c) => c.id === 'structure');
+    expect(sa?.status).toBe('review');
+    expect(sa?.message).toContain('also used in Platforms Used');
+    expect(sb?.message).toContain('also used in Sleep Quality');
+  });
+});

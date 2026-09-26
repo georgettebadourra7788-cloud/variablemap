@@ -88,6 +88,9 @@ export function reviewVariable(v: Variable, allVariables: Variable[] = [v]): Var
   checks.push(
     check('scale', 'Measurement scale', v.measurementScale === 'not_specified' ? 'missing' : 'complete', 'Complete when a scale other than "Not specified" is selected.'),
   );
+  checks.push(
+    check('datatype', 'Data type', v.dataType === 'not_specified' ? 'missing' : 'complete', 'Complete when a data type other than "Not specified" is selected (used in the data dictionary).'),
+  );
 
   // Coding
   {
@@ -120,7 +123,7 @@ export function reviewVariable(v: Variable, allVariables: Variable[] = [v]): Var
 
   // Dimensions & items structure (only when used)
   if (v.dimensions.length > 0 || v.items.length > 0) {
-    const rule = 'Each dimension should be named and have at least one item. When dimensions exist, each item should be assigned to one. Item codes should be filled in.';
+    const rule = 'Each dimension should be named and have at least one item. When dimensions exist, each item should be assigned to one. Item codes should be filled in and unique across the project.';
     const problems: string[] = [];
     const unnamed = v.dimensions.filter((d) => !filled(d.name)).length;
     if (unnamed) problems.push(`${unnamed} dimension${unnamed === 1 ? ' is' : 's are'} unnamed`);
@@ -132,6 +135,15 @@ export function reviewVariable(v: Variable, allVariables: Variable[] = [v]): Var
     }
     const noCode = v.items.filter((i) => !filled(i.code)).length;
     if (noCode) problems.push(`${noCode} item${noCode === 1 ? ' has' : 's have'} no item code`);
+    for (const d of duplicateCodes(allVariables)) {
+      if (!d.variables.some((x) => x.id === v.id)) continue;
+      const others = d.variables.filter((x) => x.id !== v.id).map((x) => x.name.trim() || 'Untitled variable');
+      problems.push(
+        others.length
+          ? `item code ${d.code} is also used in ${[...new Set(others)].join(', ')}`
+          : `item code ${d.code} is used more than once in this variable`,
+      );
+    }
     checks.push(
       problems.length
         ? check('structure', 'Dimensions & items', 'review', rule, `${capitalize(problems.join('; '))}. Consider reviewing this field.`)
@@ -140,6 +152,20 @@ export function reviewVariable(v: Variable, allVariables: Variable[] = [v]): Var
   }
 
   return { variableId: v.id, variableName: v.name.trim() || 'Untitled variable', checks, counts: tally(checks) };
+}
+
+/** Item codes used more than once across the project (case-insensitive), with the variables that use them. */
+export function duplicateCodes(variables: Variable[]): { code: string; variables: Variable[] }[] {
+  const map = new Map<string, { code: string; variables: Variable[] }>();
+  for (const v of variables)
+    for (const i of v.items) {
+      const key = i.code.trim().toLowerCase();
+      if (!key) continue;
+      const entry = map.get(key) ?? { code: i.code.trim(), variables: [] };
+      entry.variables.push(v);
+      map.set(key, entry);
+    }
+  return [...map.values()].filter((e) => e.variables.length > 1);
 }
 
 function capitalize(s: string) {
@@ -155,14 +181,15 @@ export function reviewProject(p: Project): ProjectReview {
   ];
 
   // Duplicate item codes across the whole project matter for the dataset.
-  const codes = new Map<string, number>();
-  for (const v of p.variables) for (const i of v.items) {
-    const c = i.code.trim().toLowerCase();
-    if (c) codes.set(c, (codes.get(c) ?? 0) + 1);
+  const dups = duplicateCodes(p.variables);
+  if (dups.length > 0) {
+    const detail = dups
+      .map((d) => `${d.code} (${[...new Set(d.variables.map((v) => v.name.trim() || 'Untitled variable'))].join(', ')})`)
+      .join('; ');
+    project.push(
+      check('codes', 'Unique item codes', 'review', 'Item codes should be unique across the project so each maps to one dataset column.', `Item code${dups.length === 1 ? '' : 's'} used more than once: ${detail}. Consider reviewing this field.`),
+    );
   }
-  const dups = [...codes.values()].filter((n) => n > 1).length;
-  if (dups > 0)
-    project.push(check('codes', 'Unique item codes', 'review', 'Item codes should be unique across the project so each maps to one dataset column.', `${dups} item code${dups === 1 ? ' is' : 's are'} used more than once. Consider reviewing this field.`));
 
   const variables = p.variables.map((v) => reviewVariable(v, p.variables));
   const counts = tally([...project, ...variables.flatMap((v) => v.checks)]);
