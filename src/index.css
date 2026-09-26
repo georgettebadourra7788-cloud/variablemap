@@ -68,7 +68,8 @@
     font-size: 7.5pt;
     min-width: 0 !important;
     white-space: normal !important;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    hyphens: auto;
   }
   .print-table thead {
     display: table-header-group;
